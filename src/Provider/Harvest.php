@@ -84,7 +84,7 @@ class Harvest extends AbstractProvider
      *
      * @param object $response
      * @param AccessToken $token
-     * @return League\OAuth2\Client\Provider\ResourceOwnerInterface
+     * @return HarvestUser
      */
     protected function createResourceOwner(array $response, AccessToken $token)
     {
@@ -95,7 +95,7 @@ class Harvest extends AbstractProvider
      * Returns a prepared request for requesting an access token.
      *
      * @param array $params Query string parameters
-     * @return Psr\Http\Message\RequestInterface
+     * @return \GuzzleHttp\Psr7\Request
      */
     protected function getAccessTokenRequest(array $params)
     {
