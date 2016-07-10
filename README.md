@@ -1,11 +1,11 @@
 # Harvest Provider for OAuth 2.0 Client
 
-[![Latest Version](https://img.shields.io/github/release/nilesuan/oauth2-harvest.svg?style=flat-square)](https://github.com/nilesuan/oauth2-harvest/releases)
-[![Software License](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square)](LICENSE.md)
-[![Build Status](https://img.shields.io/travis/nilesuan/oauth2-bitbucket/master.svg?style=flat-square)](https://travis-ci.org/nilesuan/oauth2-harvest)
-[![Coverage Status](https://img.shields.io/scrutinizer/coverage/g/nilesuan/oauth2-harvest.svg?style=flat-square)](https://scrutinizer-ci.com/g/nilesuan/oauth2-harvest/code-structure)
-[![Quality Score](https://img.shields.io/scrutinizer/g/nilesuan/oauth2-harvest.svg?style=flat-square)](https://scrutinizer-ci.com/g/nilesuan/oauth2-harvest)
-[![Total Downloads](https://img.shields.io/packagist/dt/nilesuan/oauth2-harvest.svg?style=flat-square)](https://packagist.org/packages/nilesuan/oauth2-harvest)
+[![Latest Stable Version](https://poser.pugx.org/nilesuan/oauth2-harvest/v/stable)](https://packagist.org/packages/nilesuan/oauth2-harvest)
+[![License](https://poser.pugx.org/nilesuan/oauth2-harvest/license)](https://packagist.org/packages/nilesuan/oauth2-harvest)
+[![Build Status](https://travis-ci.org/nilesuan/oauth2-harvest.svg?branch=master)](https://travis-ci.org/nilesuan/oauth2-harvest)
+[![Code Coverage](https://scrutinizer-ci.com/g/nilesuan/oauth2-harvest/badges/coverage.png?b=master)](https://scrutinizer-ci.com/g/nilesuan/oauth2-harvest/?branch=master)
+[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/nilesuan/oauth2-harvest/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/nilesuan/oauth2-harvest/?branch=master)
+[![Total Downloads](https://poser.pugx.org/nilesuan/oauth2-harvest/downloads)](https://packagist.org/packages/nilesuan/oauth2-harvest)
 
 This package provides Harvest's OAuth 2.0 support for the PHP League's [OAuth 2.0 Client](https://github.com/thephpleague/oauth2-client).
 
