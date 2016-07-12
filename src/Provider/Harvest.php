@@ -1,16 +1,30 @@
-<?php namespace Nilesuan\OAuth2\Client\Provider;
+<?php
+
+namespace Nilesuan\OAuth2\Client\Provider;
 
 use League\OAuth2\Client\Provider\AbstractProvider;
-use League\OAuth2\Client\Provider\Exception\IdentityProviderException;
+use Nilesuan\OAuth2\Client\Provider\Exception\HarvestIdentityProviderException;
 use League\OAuth2\Client\Token\AccessToken;
-use League\OAuth2\Client\Tool\ArrayAccessorTrait;
 use League\OAuth2\Client\Tool\BearerAuthorizationTrait;
 use Psr\Http\Message\ResponseInterface;
 
 class Harvest extends AbstractProvider
 {
-    use ArrayAccessorTrait,
-        BearerAuthorizationTrait;
+    use BearerAuthorizationTrait;
+
+    /**
+     * Domain
+     *
+     * @var string
+     */
+    public $domain = 'https://api.harvestapp.com';
+
+    /**
+     * Api domain
+     *
+     * @var string
+     */
+    public $apiDomain = 'https://api.harvestapp.com';
 
     /**
      * Get authorization url to begin OAuth flow
@@ -19,17 +33,19 @@ class Harvest extends AbstractProvider
      */
     public function getBaseAuthorizationUrl()
     {
-        return 'https://api.harvestapp.com/oauth2/authorize';
+        return $this->domain.'/oauth2/authorize';
     }
 
     /**
      * Get access token url to retrieve token
      *
+     * @param  array $params
+     *
      * @return string
      */
     public function getBaseAccessTokenUrl(array $params)
     {
-        return 'https://api.harvestapp.com/oauth2/token';
+        return $this->domain.'/oauth2/token';
     }
 
     /**
@@ -41,7 +57,10 @@ class Harvest extends AbstractProvider
      */
     public function getResourceOwnerDetailsUrl(AccessToken $token)
     {
-        return 'https://api.harvestapp.com/account/who_am_i';
+        if ($this->domain === 'https://api.harvestapp.com') {
+            return $this->apiDomain.'/account/who_am_i';
+        }
+        return $this->domain.'/account/who_am_i';
     }
 
     /**
@@ -60,49 +79,46 @@ class Harvest extends AbstractProvider
     /**
      * Check a provider response for errors.
      *
-     * @throws IdentityProviderException
+     * @throws HarvestIdentityProviderException
      * @param  ResponseInterface $response
      * @param  string $data Parsed response data
      * @return void
      */
     protected function checkResponse(ResponseInterface $response, $data)
     {
-        $errors = [
-            'error_description',
-            'error.message',
-        ];
-
-        array_map(function ($error) use ($response, $data) {
-            if ($message = $this->getValueByKey($data, $error)) {
-                throw new IdentityProviderException($message, $response->getStatusCode(), $response);
-            }
-        }, $errors);
+        if ($response->getStatusCode() >= 400) {
+            throw HarvestIdentityProviderException::clientException($response, $data);
+        } elseif (isset($data['error'])) {
+            throw HarvestIdentityProviderException::oauthException($response, $data);
+        }
     }
 
     /**
      * Generate a user object from a successful user details request.
      *
-     * @param object $response
+     * @param array $response
      * @param AccessToken $token
-     * @return HarvestUser
+     * @return League\OAuth2\Client\Provider\ResourceOwnerInterface
      */
     protected function createResourceOwner(array $response, AccessToken $token)
     {
-        return new HarvestUser($response);
+        $user = new HarvestResourceOwner($response);
+
+        return $user->setDomain($this->domain);
     }
 
     /**
-     * Returns a prepared request for requesting an access token.
+     * Returns an authenticated PSR-7 request instance.
      *
-     * @param array $params Query string parameters
-     * @return \GuzzleHttp\Psr7\Request
+     * @param  string $method
+     * @param  string $url
+     * @param  AccessToken|string $token
+     * @param  array $options Any of "headers", "body", and "protocolVersion".
+     * @return RequestInterface
      */
-    protected function getAccessTokenRequest(array $params)
+    public function getAuthenticatedRequest($method, $url, $token, array $options = [])
     {
-        $request = parent::getAccessTokenRequest($params);
-        $uri = $request->getUri()
-            ->withUserInfo($this->clientId, $this->clientSecret);
-
-        return $request->withUri($uri);
+        $options['headers'] = array('Content-Type' => 'application/json','Accept' => 'application/json');
+        return $this->createRequest($method, $url, $token, $options);
     }
 }

@@ -1,9 +1,17 @@
-<?php namespace Nilesuan\OAuth2\Client\Provider;
+<?php
+namespace Nilesuan\OAuth2\Client\Provider;
 
 use League\OAuth2\Client\Provider\ResourceOwnerInterface;
 
-class HarvestUser implements ResourceOwnerInterface
+class HarvestResourceOwner implements ResourceOwnerInterface
 {
+    /**
+     * Domain
+     *
+     * @var string
+     */
+    protected $domain;
+
     /**
      * Raw response
      *
@@ -32,16 +40,6 @@ class HarvestUser implements ResourceOwnerInterface
     }
 
     /**
-     * Get resource owner name
-     *
-     * @return string|null
-     */
-    public function getName()
-    {
-        return $this->response['user']['first_name'].' '.$this->response['user']['last_name'] ?: null;
-    }
-
-    /**
      * Get resource owner email
      *
      * @return string|null
@@ -52,13 +50,37 @@ class HarvestUser implements ResourceOwnerInterface
     }
 
     /**
-     * Get resource owner avatar
+     * Get resource owner name
+     *
+     * @return string|null
+     */
+    public function getName()
+    {
+        return $this->response['user']['first_name'].' '.$this->response['user']['last_name'] ?: null;
+    }
+
+    /**
+     * Get resource owner avatar url
      *
      * @return string|null
      */
     public function getAvatar()
     {
         return $this->response['user']['avatar_url'] ?: null;
+    }
+
+    /**
+     * Set resource owner domain
+     *
+     * @param  string $domain
+     *
+     * @return ResourceOwner
+     */
+    public function setDomain($domain)
+    {
+        $this->domain = $domain;
+
+        return $this;
     }
 
     /**
