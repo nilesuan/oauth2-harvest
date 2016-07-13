@@ -1,4 +1,6 @@
-<?php namespace Nilesuan\OAuth2\Client\Test\Provider;
+<?php
+
+namespace Nilesuan\OAuth2\Client\Test\Provider;
 
 use Mockery as m;
 
@@ -10,8 +12,8 @@ class HarvestTest extends \PHPUnit_Framework_TestCase
     {
         $this->provider = new \Nilesuan\OAuth2\Client\Provider\Harvest([
             'clientId' => 'mock_client_id',
-            'clientSecret' => 'mock_client_secret',
-            'redirectUri' => 'redirect_url',
+            'clientSecret' => 'mock_secret',
+            'redirectUri' => 'none',
         ]);
     }
 
@@ -67,8 +69,9 @@ class HarvestTest extends \PHPUnit_Framework_TestCase
     public function testGetAccessToken()
     {
         $response = m::mock('Psr\Http\Message\ResponseInterface');
-        $response->shouldReceive('getBody')->andReturn('{"access_token": "mock_access_token","scopes": "account","expires_in": 3600,"refresh_token": "mock_refresh_token","token_type": "bearer"}');
+        $response->shouldReceive('getBody')->andReturn('{"access_token":"mock_access_token", "scope":"repo,gist", "token_type":"bearer"}');
         $response->shouldReceive('getHeader')->andReturn(['content-type' => 'json']);
+        $response->shouldReceive('getStatusCode')->andReturn(200);
 
         $client = m::mock('GuzzleHttp\ClientInterface');
         $client->shouldReceive('send')->times(1)->andReturn($response);
@@ -77,9 +80,8 @@ class HarvestTest extends \PHPUnit_Framework_TestCase
         $token = $this->provider->getAccessToken('authorization_code', ['code' => 'mock_authorization_code']);
 
         $this->assertEquals('mock_access_token', $token->getToken());
-        $this->assertLessThanOrEqual(time() + 3600, $token->getExpires());
-        $this->assertGreaterThanOrEqual(time(), $token->getExpires());
-        $this->assertEquals('mock_refresh_token', $token->getRefreshToken());
+        $this->assertNull($token->getExpires());
+        $this->assertNull($token->getRefreshToken());
         $this->assertNull($token->getResourceOwnerId());
     }
 
@@ -93,12 +95,14 @@ class HarvestTest extends \PHPUnit_Framework_TestCase
         $avatar = uniqid();
 
         $postResponse = m::mock('Psr\Http\Message\ResponseInterface');
-        $postResponse->shouldReceive('getBody')->andReturn('{"access_token": "mock_access_token","scopes": "account","expires_in": 3600,"refresh_token": "mock_refresh_token","token_type": "bearer"}');
-        $postResponse->shouldReceive('getHeader')->andReturn(['content-type' => 'json']);
+        $postResponse->shouldReceive('getBody')->andReturn('access_token=mock_access_token&expires=3600&refresh_token=mock_refresh_token&otherKey={1234}');
+        $postResponse->shouldReceive('getHeader')->andReturn(['content-type' => 'application/x-www-form-urlencoded']);
+        $postResponse->shouldReceive('getStatusCode')->andReturn(200);
 
         $userResponse = m::mock('Psr\Http\Message\ResponseInterface');
         $userResponse->shouldReceive('getBody')->andReturn('{ "company": { "base_uri": "https://api.harvestapp.com", "full_domain": "api.harvestapp.com", "name": "Sample Company", "active": true, "week_start_day": "Monday", "time_format": "hours_minutes", "clock": "12h", "decimal_symbol": ".", "color_scheme": "orange", "modules": { "expenses": true, "invoices": true, "estimates": false, "approval": false }, "thousands_separator": ",", "plan_type": "trial" }, "user": { "timezone": "Pacific Time (US & Canada)", "timezone_identifier": "America/Los_Angeles", "timezone_utc_offset": -25200, "id": '.$userId.', "email": "'.$email.'", "admin": true, "first_name": "'.$firstName.'", "last_name": "'.$lastName.'", "avatar_url": "'.$avatar.'", "project_manager": { "is_project_manager": false, "can_see_rates": true, "can_create_projects": true, "can_create_invoices": true }, "timestamp_timers": false } }');
         $userResponse->shouldReceive('getHeader')->andReturn(['content-type' => 'json']);
+        $userResponse->shouldReceive('getStatusCode')->andReturn(200);
 
         $client = m::mock('GuzzleHttp\ClientInterface');
         $client->shouldReceive('send')
@@ -119,42 +123,41 @@ class HarvestTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($avatar, $user->toArray()['user']['avatar_url']);
     }
 
-    public function testUserDataFails()
+    /**
+     * @expectedException League\OAuth2\Client\Provider\Exception\IdentityProviderException
+     **/
+    public function testExceptionThrownWhenErrorObjectReceived()
     {
-        $errorPayloads = [
-            '{"error":"mock_error","error_description": "mock_error_description"}',
-            '{"error":{"message":"mock_error"},"error_description": "mock_error_description"}',
-            '{"foo":"bar"}'
-        ];
+        $status = rand(400,600);
+        $postResponse = m::mock('Psr\Http\Message\ResponseInterface');
+        $postResponse->shouldReceive('getBody')->andReturn('{"message": "Validation Failed","errors": [{"resource": "Issue","field": "title","code": "missing_field"}]}');
+        $postResponse->shouldReceive('getHeader')->andReturn(['content-type' => 'json']);
+        $postResponse->shouldReceive('getStatusCode')->andReturn($status);
 
-        $testPayload = function ($payload) {
-            $postResponse = m::mock('Psr\Http\Message\ResponseInterface');
-            $postResponse->shouldReceive('getBody')->andReturn('{"access_token": "mock_access_token","scopes": "account","expires_in": 3600,"refresh_token": "mock_refresh_token","token_type": "bearer"}');
-            $postResponse->shouldReceive('getHeader')->andReturn(['content-type' => 'json']);
+        $client = m::mock('GuzzleHttp\ClientInterface');
+        $client->shouldReceive('send')
+            ->times(1)
+            ->andReturn($postResponse);
+        $this->provider->setHttpClient($client);
+        $token = $this->provider->getAccessToken('authorization_code', ['code' => 'mock_authorization_code']);
+    }
 
-            $userResponse = m::mock('Psr\Http\Message\ResponseInterface');
-            $userResponse->shouldReceive('getBody')->andReturn($payload);
-            $userResponse->shouldReceive('getHeader')->andReturn(['content-type' => 'json']);
-            $userResponse->shouldReceive('getStatusCode')->andReturn(500);
+    /**
+     * @expectedException League\OAuth2\Client\Provider\Exception\IdentityProviderException
+     **/
+    public function testExceptionThrownWhenOAuthErrorReceived()
+    {
+        $status = 200;
+        $postResponse = m::mock('Psr\Http\Message\ResponseInterface');
+        $postResponse->shouldReceive('getBody')->andReturn('{"error": "bad_verification_code","error_description": "The code passed is incorrect or expired.","error_uri": "https://developer.github.com/v3/oauth/#bad-verification-code"}');
+        $postResponse->shouldReceive('getHeader')->andReturn(['content-type' => 'json']);
+        $postResponse->shouldReceive('getStatusCode')->andReturn($status);
 
-            $client = m::mock('GuzzleHttp\ClientInterface');
-            $client->shouldReceive('send')
-                ->times(2)
-                ->andReturn($postResponse, $userResponse);
-            $this->provider->setHttpClient($client);
-
-            $token = $this->provider->getAccessToken('authorization_code', ['code' => 'mock_authorization_code']);
-
-            try {
-                $user = $this->provider->getResourceOwner($token);
-                return false;
-            } catch (\Exception $e) {
-                $this->assertInstanceOf('\League\OAuth2\Client\Provider\Exception\IdentityProviderException', $e);
-            }
-
-            return $payload;
-        };
-
-        $this->assertCount(2, array_filter(array_map($testPayload, $errorPayloads)));
+        $client = m::mock('GuzzleHttp\ClientInterface');
+        $client->shouldReceive('send')
+            ->times(1)
+            ->andReturn($postResponse);
+        $this->provider->setHttpClient($client);
+        $token = $this->provider->getAccessToken('authorization_code', ['code' => 'mock_authorization_code']);
     }
 }
